@@ -1,0 +1,761 @@
+diff -rupN systemd-208/debian/control systemd_new/debian/control
+--- systemd-208/debian/control	2014-08-06 11:34:21.000000000 +0000
++++ systemd_new/debian/control	2014-08-11 14:22:48.823963546 +0000
+@@ -17,6 +17,7 @@ Build-Depends: debhelper (>= 9),
+                gtk-doc-tools,
+                m4,
+                dh-autoreconf,
++               dh-systemd,
+                automake (>= 1.11),
+                autoconf (>= 2.63),
+                intltool,
+@@ -37,7 +38,8 @@ Build-Depends: debhelper (>= 9),
+                libgirepository1.0-dev (>= 1.31.1),
+                gobject-introspection (>= 1.31.1),
+                python3-all-dev,
+-               libglib2.0-doc
++               libglib2.0-doc,
++               libmicrohttpd-dev (>= 0.9.5)
+ 
+ Package: systemd
+ Architecture: linux-any
+@@ -355,6 +357,16 @@ Depends: ${shlibs:Depends},
+ Description: Python 3 bindings for systemd
+  This package contains Python 3 bindings for the systemd libraries.
+ 
++Package: systemd-journal-gatewayd
++Section: admin
++Priority: optional
++Architecture: linux-any
++Depends: ${shlibs:Depends},
++         ${misc:Depends},
++         adduser
++Description: Systemd Journal Gateway Daemon
++ Gateway for serving journal events over the network using HTTP.
++
+ Package: systemd-dbg
+ Architecture: linux-any
+ Section: debug
+diff -rupN systemd-208/debian/control.orig systemd_new/debian/control.orig
+--- systemd-208/debian/control.orig	1970-01-01 00:00:00.000000000 +0000
++++ systemd_new/debian/control.orig	2014-08-06 11:34:21.000000000 +0000
+@@ -0,0 +1,380 @@
++Source: systemd
++Section: admin
++Priority: optional
++Maintainer: Debian systemd Maintainers <pkg-systemd-maintainers@lists.alioth.debian.org>
++Uploaders: Tollef Fog Heen <tfheen@debian.org>, Michael Biebl <biebl@debian.org>, Marco d'Itri <md@linux.it>, Michael Stapelberg <stapelberg@debian.org>
++Standards-Version: 3.9.5
++Vcs-Git: git://anonscm.debian.org/pkg-systemd/systemd.git
++Vcs-Browser: http://anonscm.debian.org/gitweb/?p=pkg-systemd/systemd.git;a=summary
++X-Python-Version: >= 2.7
++XS-Testsuite: autopkgtest
++Homepage: http://www.freedesktop.org/wiki/Software/systemd
++Build-Depends: debhelper (>= 9),
++               pkg-config,
++               xsltproc,
++               docbook-xsl,
++               docbook-xml,
++               gtk-doc-tools,
++               m4,
++               dh-autoreconf,
++               automake (>= 1.11),
++               autoconf (>= 2.63),
++               intltool,
++               gperf,
++               libcap-dev,
++               libpam0g-dev,
++               libaudit-dev,
++               libdbus-1-dev (>= 1.3.2),
++               libglib2.0-dev (>= 2.22.0),
++               libcryptsetup-dev (>= 2:1.6.0),
++               libwrap0-dev,
++               libselinux1-dev (>= 2.1.9),
++               libacl1-dev,
++               liblzma-dev,
++               libgcrypt11-dev,
++               libkmod-dev (>= 14),
++               libblkid-dev (>= 2.20),
++               libgirepository1.0-dev (>= 1.31.1),
++               gobject-introspection (>= 1.31.1),
++               python3-all-dev,
++               libglib2.0-doc
++
++Package: systemd
++Architecture: linux-any
++Section: admin
++Priority: optional
++Recommends: libpam-systemd
++Suggests: systemd-ui
++Pre-Depends: ${shlibs:Pre-Depends},
++             ${misc:Pre-Depends}
++Depends: ${shlibs:Depends},
++         ${misc:Depends},
++         libsystemd-login0 (= ${binary:Version}),
++         util-linux (>= 2.19.1-2),
++         initscripts (>= 2.88dsf-53.2),
++         sysv-rc,
++         udev,
++         acl,
++         adduser,
++         libcap2-bin
++Breaks: lvm2 (<< 2.02.104-1),
++        lsb-base (<< 4.1+Debian4)
++Conflicts: klogd
++Description: system and service manager
++ systemd is a replacement for sysvinit.  It is dependency-based and
++ able to read the LSB init script headers in addition to parsing rcN.d
++ links as hints.
++ .
++ It also provides process supervision using cgroups and the ability to
++ not only depend on other init script being started, but also
++ availability of a given mount point or dbus service.
++ .
++ Installing the systemd package will not switch your init system unless you
++ boot with init=/bin/systemd or install systemd-sysv in addition.
++
++Package: systemd-sysv
++Architecture: linux-any
++Section: admin
++Priority: extra
++Conflicts: sysvinit-core,
++           upstart
++Replaces: sysvinit (<< 2.88dsf-44~),
++          sysvinit-core,
++          upstart
++Pre-Depends: systemd
++Depends: ${shlibs:Depends},
++         ${misc:Depends},
++         systemd (= ${binary:Version})
++Description: system and service manager - SysV links
++ systemd is a replacement for sysvinit.  It is dependency-based and
++ able to read the LSB init script headers in addition to parsing rcN.d
++ links as hints.
++ .
++ It also provides process supervision using cgroups and the ability to
++ not only depend on other init script being started, but also
++ availability of a given mount point or dbus service.
++ .
++ This package provides the manual pages and links needed for systemd
++ to replace sysvinit. Installing systemd-sysv will overwrite /sbin/init with a
++ link to systemd.
++
++Package: libpam-systemd
++Architecture: linux-any
++Multi-Arch: same
++Section: admin
++Priority: optional
++Pre-Depends: ${misc:Pre-Depends}
++Depends: ${shlibs:Depends},
++         ${misc:Depends},
++         systemd (= ${binary:Version}),
++         libpam-runtime (>= 1.0.1-6),
++         dbus,
++         systemd-sysv | systemd-shim (>= 6-4)
++Description: system and service manager - PAM module
++ systemd is a replacement for sysvinit.  It is dependency-based and
++ able to read the LSB init script headers in addition to parsing rcN.d
++ links as hints.
++ .
++ It also provides process supervision using cgroups and the ability to
++ not only depend on other init script being started, but also
++ availability of a given mount point or dbus service.
++ .
++ This package contains the PAM module which registers user sessions in
++ the systemd control group hierarchy.
++ .
++ If in doubt, do install this package.
++ .
++ Packages that depend on logind functionality need to depend on libpam-systemd.
++
++Package: libsystemd-login0
++Architecture: linux-any
++Multi-Arch: same
++Section: libs
++Priority: optional
++Pre-Depends: ${misc:Pre-Depends}
++Depends: ${shlibs:Depends},
++         ${misc:Depends}
++Description: systemd login utility library
++ The libsystemd-login library provides an interface for the
++ systemd-logind service which is used to track user sessions and seats.
++
++Package: libsystemd-login-dev
++Architecture: linux-any
++Multi-Arch: same
++Section: libdevel
++Priority: optional
++Depends: ${shlibs:Depends},
++         ${misc:Depends},
++         libsystemd-login0 (= ${binary:Version})
++Breaks: systemd (<< 204-8)
++Replaces: systemd (<< 204-8)
++Description: systemd login utility library - development files
++ The libsystemd-login library provides an interface for the
++ systemd-logind service which is used to track user sessions and seats.
++ .
++ This package contains the development files
++
++Package: libsystemd-daemon0
++Architecture: linux-any
++Multi-Arch: same
++Section: libs
++Priority: optional
++Pre-Depends: ${shlibs:Depends},
++             ${misc:Pre-Depends}
++Depends: ${misc:Depends}
++Description: systemd utility library
++ The sd-daemon library provides a reference implementation of various
++ APIs for new-style daemons, as implemented by the systemd init system.
++
++Package: libsystemd-daemon-dev
++Architecture: linux-any
++Multi-Arch: same
++Section: libdevel
++Priority: optional
++Depends: ${shlibs:Depends},
++         ${misc:Depends},
++         libsystemd-daemon0 (= ${binary:Version})
++Breaks: systemd (<< 204-8)
++Replaces: systemd (<< 204-8)
++Description: systemd utility library - development files
++ The sd-daemon library provides a reference implementation of various
++ APIs for new-style daemons, as implemented by the systemd init system.
++ .
++ This package contains the development files
++
++Package: libsystemd-journal0
++Architecture: linux-any
++Multi-Arch: same
++Section: libs
++Priority: optional
++Pre-Depends: ${misc:Pre-Depends}
++Depends: ${shlibs:Depends},
++         ${misc:Depends}
++Description: systemd journal utility library
++ The libsystemd-journal library provides an interface for the
++ systemd journal service.
++
++Package: libsystemd-journal-dev
++Architecture: linux-any
++Multi-Arch: same
++Section: libdevel
++Priority: optional
++Depends: ${shlibs:Depends},
++         ${misc:Depends},
++         libsystemd-journal0 (= ${binary:Version}),
++         libsystemd-id128-dev (= ${binary:Version})
++Breaks: systemd (<< 204-8)
++Replaces: systemd (<< 204-8)
++Description: systemd journal utility library - development files
++ The libsystemd-journal library provides an interface for the
++ systemd journal service.
++ .
++ This package contains the development files
++
++Package: libsystemd-id128-0
++Architecture: linux-any
++Multi-Arch: same
++Section: libs
++Priority: optional
++Pre-Depends: ${misc:Pre-Depends}
++Depends: ${shlibs:Depends},
++         ${misc:Depends}
++Description: systemd 128 bit ID utility library
++ The libsystemd-id128 library provides utility functions for generating
++ 128 bit IDs.
++
++Package: libsystemd-id128-dev
++Architecture: linux-any
++Multi-Arch: same
++Section: libdevel
++Priority: optional
++Depends: ${shlibs:Depends},
++         ${misc:Depends},
++         libsystemd-id128-0 (= ${binary:Version})
++Breaks: systemd (<< 204-8)
++Replaces: systemd (<< 204-8)
++Description: systemd 128 bit ID utility library - development files
++ The libsystemd-id128 library provides utility functions for generating
++ 128 bit IDs.
++ .
++ This package contains the development files
++
++Package: udev
++Section: admin
++Priority: important
++Architecture: linux-any
++Multi-Arch: foreign
++Pre-Depends: debconf (>= 1.4.69) | debconf-2.0
++Depends: ${shlibs:Depends},
++         ${misc:Depends},
++         libudev1 (= ${binary:Version}),
++         lsb-base (>= 3.0-6),
++         util-linux (>= 2.16),
++         s390-tools (>> 1.6.2) [s390],
++         procps
++Breaks: consolekit (<< 0.4.6-1)
++Description: /dev/ and hotplug management daemon
++ udev is a daemon which dynamically creates and removes device nodes from
++ /dev/, handles hotplug events and loads drivers at boot time.
++
++Package: libudev1
++Section: libs
++Priority: important
++Architecture: linux-any
++Multi-Arch: same
++Pre-Depends: ${misc:Pre-Depends}
++Depends: ${shlibs:Depends},
++         ${misc:Depends}
++Description: libudev shared library
++ This library provides access to udev device information.
++
++Package: libudev-dev
++Section: libdevel
++Priority: optional
++Architecture: linux-any
++Multi-Arch: same
++Depends: ${shlibs:Depends},
++         ${misc:Depends},
++         libudev1 (= ${binary:Version})
++Description: libudev development files
++ This package contains the files needed for developing applications that
++ use libudev.
++
++Package: udev-udeb
++XC-Package-Type: udeb
++Section: debian-installer
++Priority: optional
++Architecture: linux-any
++Depends: ${shlibs:Depends},
++         ${misc:Depends},
++         util-linux-udeb
++Description: /dev/ and hotplug management daemon
++ udev is a daemon which dynamically creates and removes device nodes from
++ /dev/, handles hotplug events and loads drivers at boot time.
++ .
++ This is a minimal version, only for use in the installation system.
++
++Package: libudev1-udeb
++Package-Type: udeb
++Section: debian-installer
++Priority: optional
++Architecture: linux-any
++Depends: ${shlibs:Depends},
++         ${misc:Depends}
++Description: libudev shared library
++ This library provides access to udev device information.
++ .
++ This is a minimal version, only for use in the installation system.
++
++Package: libgudev-1.0-0
++Section: libs
++Priority: optional
++Architecture: linux-any
++Multi-Arch: same
++Pre-Depends: ${misc:Pre-Depends}
++Depends: ${shlibs:Depends},
++         ${misc:Depends}
++Description: GObject-based wrapper library for libudev
++ This library makes it much simpler to use libudev from programs already using
++ GObject. It also makes it possible to easily use libudev from other
++ programming languages, such as Javascript, because of GObject introspection
++ support.
++
++Package: gir1.2-gudev-1.0
++Section: introspection
++Priority: optional
++Architecture: linux-any
++Depends: ${shlibs:Depends},
++         ${misc:Depends},
++         ${gir:Depends}
++Description: libgudev-1.0 introspection data
++ This package contains the GObject-introspection data of libgudev-1.0 in
++ binary typelib format.
++
++Package: libgudev-1.0-dev
++Section: libdevel
++Priority: optional
++Architecture: linux-any
++Depends: ${shlibs:Depends},
++         ${misc:Depends},
++         libgudev-1.0-0 (= ${binary:Version}),
++         gir1.2-gudev-1.0 (= ${binary:Version}),
++         libglib2.0-dev,
++         pkg-config
++Description: libgudev-1.0 development files
++ This package contains the files needed for developing applications that
++ use libgudev-1.0.
++
++Package: python3-systemd
++Section: python
++Priority: optional
++Architecture: linux-any
++Depends: ${shlibs:Depends},
++         ${misc:Depends},
++         ${python3:Depends}
++Description: Python 3 bindings for systemd
++ This package contains Python 3 bindings for the systemd libraries.
++
++Package: systemd-dbg
++Architecture: linux-any
++Section: debug
++Priority: extra
++Depends: ${misc:Depends},
++         systemd (= ${binary:Version}),
++         udev (= ${binary:Version}),
++         libsystemd-login0 (= ${binary:Version}),
++         libsystemd-daemon0 (= ${binary:Version}),
++         libsystemd-journal0 (= ${binary:Version}),
++         libsystemd-id128-0 (= ${binary:Version}),
++         libudev1 (= ${binary:Version})
++Description: system and service manager (debug symbols)
++ systemd is a replacement for sysvinit.  It is dependency-based and
++ able to read the LSB init script headers in addition to parsing rcN.d
++ links as hints.
++ .
++ It also provides process supervision using cgroups and the ability to
++ not only depend on other init script being started, but also
++ availability of a given mount point or dbus service.
++ .
++ This package contains the debugging symbols for systemd, udev and
++ related libraries.
+diff -rupN systemd-208/debian/rules systemd_new/debian/rules
+--- systemd-208/debian/rules	2014-08-06 11:34:21.000000000 +0000
++++ systemd_new/debian/rules	2014-08-11 14:21:55.211679055 +0000
+@@ -58,6 +58,7 @@ CONFFLAGS_udeb = \
+ 	--disable-xattr \
+ 	--disable-gudev \
+ 	--disable-manpages \
++	--disable-microhttpd \
+ 	--without-python
+ 
+ override_dh_auto_configure:
+@@ -192,6 +193,13 @@ endif
+ 	# files shipped by libsystemd-*-dev
+ 	find debian/libsystemd-*-dev -name "*.3" -exec sh -c \
+ 		'rm debian/systemd/usr/share/man/man3/$$(basename {})' \;
++	# files shipped by systemd-journal-gatewayd
++	rm debian/systemd/lib/systemd/system/systemd-journal-gatewayd.socket
++	rm debian/systemd/lib/systemd/system/systemd-journal-gatewayd.service
++	rm debian/systemd/lib/systemd/systemd-journal-gatewayd
++	rm debian/systemd/usr/share/man/man8/systemd-journal-gatewayd.service.8
++	rm debian/systemd/usr/share/man/man8/systemd-journal-gatewayd.socket.8
++	rm debian/systemd/usr/share/man/man8/systemd-journal-gatewayd.8
+ 
+ # use symlinked doc directories as the old udev package did
+ override_dh_installdocs:
+@@ -225,12 +233,18 @@ autoreconf:
+ override_dh_autoreconf:
+ 	dh_autoreconf debian/rules -- autoreconf
+ 
++override_dh_systemd_enable:
++	dh_systemd_enable -psystemd-journal-gatewayd systemd-journal-gatewayd.socket
++
++override_dh_systemd_start:
++	dh_systemd_start -psystemd-journal-gatewayd systemd-journal-gatewayd.socket
++
+ override_dh_strip:
+ 	dh_strip --dbg-package=systemd-dbg
+ 
+ %:
+ ifeq (,$(findstring stage1,$(DEB_BUILD_PROFILES)))
+-	dh $@ --with autoreconf,gir,python3
++	dh $@ --with autoreconf,gir,python3,systemd
+ else
+-	dh $@ --with autoreconf,python3 $(BOOTSTRAP_DH_FLAGS)
++	dh $@ --with autoreconf,python3,systemd $(BOOTSTRAP_DH_FLAGS)
+ endif
+diff -rupN systemd-208/debian/rules.orig systemd_new/debian/rules.orig
+--- systemd-208/debian/rules.orig	1970-01-01 00:00:00.000000000 +0000
++++ systemd_new/debian/rules.orig	2014-08-06 11:34:21.000000000 +0000
+@@ -0,0 +1,236 @@
++#! /usr/bin/make -f
++
++#export DH_VERBOSE=1
++#export DEB_BUILD_OPTIONS="nostrip"
++
++DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
++
++ifneq (,$(findstring stage1,$(DEB_BUILD_PROFILES)))
++BOOTSTRAP_DH_FLAGS := -Ngir1.2-gudev-1.0 -Nlibgudev-1.0-0 -Nlibgudev-1.0-dev
++endif
++
++CONFFLAGS = \
++	--with-rootprefix= \
++	--with-rootlibdir=/lib/$(DEB_HOST_MULTIARCH) \
++	--with-zshcompletiondir=/usr/share/zsh/vendor-completions \
++	--with-sysvinit-path=/etc/init.d \
++	--with-sysvrcnd-path=/etc \
++	--with-firmware-path=/lib/firmware \
++	--with-debug-shell=/bin/bash \
++	--with-telinit=/lib/sysvinit/telinit \
++	--enable-tcpwrap \
++	--disable-coredump \
++	--disable-efi \
++	--disable-myhostname \
++	--disable-vconsole \
++	--disable-silent-rules
++ifeq (,$(findstring stage1,$(DEB_BUILD_PROFILES)))
++CONFFLAGS += --enable-libcryptsetup
++endif
++
++CONFFLAGS_deb = \
++	--enable-selinux \
++	--enable-introspection \
++	--enable-gtk-doc \
++	PYTHON=python3 \
++	$(NULL)
++
++CONFFLAGS_udeb = \
++	--disable-selinux \
++	--disable-smack \
++	--disable-ima \
++	--disable-introspection \
++	--disable-gtk-doc \
++	--disable-binfmt \
++	--disable-readahead \
++	--disable-bootchart \
++	--disable-quotacheck \
++	--disable-tmpfiles \
++	--disable-randomseed \
++	--disable-backlight \
++	--disable-logind \
++	--disable-machined \
++	--disable-hostnamed \
++	--disable-timedated \
++	--disable-localed \
++	--disable-polkit \
++	--disable-acl \
++	--disable-xattr \
++	--disable-gudev \
++	--disable-manpages \
++	--without-python
++
++override_dh_auto_configure:
++	dh_auto_configure --builddirectory=build-deb \
++		-- $(CONFFLAGS) $(CONFFLAGS_deb)
++	dh_auto_configure --builddirectory=build-udeb \
++		-- $(CONFFLAGS) $(CONFFLAGS_udeb)
++
++override_dh_auto_build:
++	dh_auto_build --builddirectory=build-deb
++	dh_auto_build --builddirectory=build-udeb
++
++override_dh_auto_install:
++	dh_auto_install --builddirectory=build-deb \
++		--destdir=debian/install/deb
++	dh_auto_install --builddirectory=build-udeb \
++		--destdir=debian/install/udeb
++
++override_dh_auto_clean:
++	dh_auto_clean --builddirectory=build-deb
++	dh_auto_clean --builddirectory=build-udeb
++	rm -rf debian/install/
++	# remove pre-generated man pages so they are rebuilt
++	rm -f man/*.[13578]
++	# remove Python byte code files
++	rm -f *.pyc
++
++override_dh_install:
++	# remove unnecessary / unused files
++	rm -f debian/install/*/usr/share/doc/systemd/LICENSE.*
++	rm -f debian/install/*/var/log/README
++	rm -f debian/install/*/etc/init.d/README
++	rm -f debian/install/*/usr/share/man/man8/kernel-install.8
++	rm -f debian/install/*/usr/bin/kernel-install
++	rm -f debian/install/*/usr/share/zsh/vendor-completions/_kernel-install
++	rm -f debian/install/*/usr/share/bash-completion/completions/kernel-install
++	rm -rf debian/install/*/usr/lib/kernel/install.d
++	rm -rf debian/install/*/etc/rpm/
++	rm -rf debian/install/*/usr/lib/rpm/
++	rm -rf debian/install/*/etc/kernel/
++	rm -f debian/install/*/usr/lib/sysctl.d/50-default.conf
++	find debian/install/ -name '*.la' -delete
++	dh_install -pudev-udeb -plibudev1-udeb --sourcedir=debian/install/udeb
++	dh_install $(BOOTSTRAP_DH_FLAGS) -Nudev-udeb -Nlibudev1-udeb --sourcedir=debian/install/deb --fail-missing
++	# install some files manually, --sourcedir makes that necessary
++	# udev-udeb
++	install -D --mode=755 debian/extra/udev.startup \
++		debian/udev-udeb/lib/debian-installer/start-udev
++	install -D --mode=755 debian/extra/udev.base-installer \
++		debian/udev-udeb/usr/lib/base-installer.d/05udev
++	mkdir -p debian/udev-udeb/lib/udev/rules.d/
++	install -D --mode=644 \
++		debian/extra/rules/73-idrac.rules \
++		debian/extra/rules/75-persistent-net-generator.rules \
++		debian/udev-udeb/lib/udev/rules.d/
++	mkdir -p debian/udev-udeb/lib/udev
++	install -D --mode=644 \
++		debian/extra/hotplug.functions \
++		debian/extra/rule_generator.functions \
++		debian/udev-udeb/lib/udev/
++	install -D --mode=755 \
++		debian/extra/write_net_rules \
++		debian/udev-udeb/lib/udev/
++	# udev: initramfs-tools support
++	install -D --mode=755 debian/extra/initramfs.hook \
++		debian/udev/usr/share/initramfs-tools/hooks/udev
++	install -D --mode=755 debian/extra/initramfs.top \
++		debian/udev/usr/share/initramfs-tools/scripts/init-top/udev
++	install -D --mode=755 debian/extra/initramfs.bottom \
++		debian/udev/usr/share/initramfs-tools/scripts/init-bottom/udev
++	# udev: debian specific rules and helpers
++	install -D --mode=644 debian/extra/rules/* \
++		debian/udev/lib/udev/rules.d/
++	install -D --mode=644 debian/extra/fbdev-blacklist.conf \
++		debian/udev/etc/modprobe.d/fbdev-blacklist.conf
++	install -D --mode=644 \
++		debian/extra/hotplug.functions \
++		debian/extra/rule_generator.functions \
++		debian/udev/lib/udev/
++	install -D --mode=755 \
++		debian/extra/dsl-modem.agent \
++		debian/extra/logger.agent \
++		debian/extra/net.agent \
++		debian/extra/udev-finish \
++		debian/extra/write_net_rules \
++		debian/udev/lib/udev/
++	# systemd
++	cp -a debian/pam-configs debian/libpam-systemd/usr/share/
++	install -D --mode=644 debian/init-functions.d/40-systemd \
++		debian/systemd/lib/lsb/init-functions.d/40-systemd
++	install --mode=644 debian/tmpfiles.d/debian.conf \
++		debian/systemd/usr/lib/tmpfiles.d/
++	install --mode=644 debian/debian-fixup.service debian/ifup@.service \
++		debian/units/run-lock.mount debian/units/run-user.mount \
++		debian/systemd/lib/systemd/system/
++	install --mode=644 debian/extra/udev-finish.service \
++		debian/udev/lib/systemd/system/
++	ln -s ../udev-finish.service debian/udev/lib/systemd/system/sysinit.target.wants/
++	install --mode=755 debian/debian-fixup \
++		debian/systemd/lib/systemd/
++	install --mode=755 debian/systemd-logind-launch \
++		debian/systemd/lib/systemd/
++	# remove duplicates
++	# files shipped by systemd-sysv / sysvinit
++	rm debian/systemd/usr/share/man/man1/init.1
++	rm debian/systemd/usr/share/man/man8/halt.8
++	rm debian/systemd/usr/share/man/man8/poweroff.8
++	rm debian/systemd/usr/share/man/man8/reboot.8
++	rm debian/systemd/usr/share/man/man8/shutdown.8
++	rm debian/systemd/usr/share/man/man8/telinit.8
++	rm debian/systemd/usr/share/man/man8/runlevel.8
++	# files shipped by libpam-systemd
++	rm debian/systemd/usr/share/man/man8/pam_systemd.8
++	# files shipped by udev
++	rm -r debian/systemd/etc/udev/
++	rm debian/systemd/lib/systemd/system/systemd-udev*
++	rm debian/systemd/lib/systemd/system/*.target.wants/systemd-udev*
++	rm debian/systemd/lib/systemd/systemd-udevd
++	rm debian/systemd/usr/share/man/man7/udev.7
++	rm debian/systemd/usr/share/man/man8/*udev*.8
++	# files shipped by udev / bash-completion
++	rm debian/systemd/usr/share/bash-completion/completions/udevadm
++	# files systemd by cryptsetup
++ifeq (,$(findstring stage1,$(DEB_BUILD_PROFILES)))
++	rm debian/systemd/usr/share/man/man5/crypttab.5
++endif
++	# files shipped by systemd
++	rm debian/udev/lib/udev/rules.d/70-uaccess.rules
++	rm debian/udev/lib/udev/rules.d/73-seat-late.rules
++	rm debian/udev/lib/udev/rules.d/71-seat.rules
++	rm debian/udev/lib/udev/rules.d/99-systemd.rules
++	# files shipped by libsystemd-*-dev
++	find debian/libsystemd-*-dev -name "*.3" -exec sh -c \
++		'rm debian/systemd/usr/share/man/man3/$$(basename {})' \;
++
++# use symlinked doc directories as the old udev package did
++override_dh_installdocs:
++	dh_installdocs -pudev -plibudev-dev --link-doc=libudev1
++	dh_installdocs -pgir1.2-gudev-1.0 -plibgudev-1.0-dev --link-doc=libgudev-1.0-0
++	dh_installdocs --remaining-packages
++
++override_dh_installinit:
++	dh_installinit --no-start
++	dh_installinit --name=udev-finish --no-start
++	dh_installinit --name=udevtrigger --no-start
++	dh_installinit --name=udevmonitor --no-start
++	dh_installinit --name=udev-fallback-graphics --no-start
++
++# The SysV compat tools (which are symlinks to systemctl) are
++# quasi-essential, so add its dependencies to Pre-Depends
++# https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=753589
++override_dh_shlibdeps:
++	dh_shlibdeps -psystemd -- -dPre-Depends -edebian/systemd/bin/systemctl -dDepends
++	dh_shlibdeps --remaining-packages
++
++override_dh_makeshlibs:
++	dh_makeshlibs -plibudev1 --add-udeb=libudev1-udeb
++	dh_makeshlibs --remaining-packages
++
++autoreconf:
++	gtkdocize --copy --docdir docs/
++	intltoolize -f -c
++	autoreconf -f -i
++
++override_dh_autoreconf:
++	dh_autoreconf debian/rules -- autoreconf
++
++override_dh_strip:
++	dh_strip --dbg-package=systemd-dbg
++
++%:
++ifeq (,$(findstring stage1,$(DEB_BUILD_PROFILES)))
++	dh $@ --with autoreconf,gir,python3
++else
++	dh $@ --with autoreconf,python3 $(BOOTSTRAP_DH_FLAGS)
++endif
+diff -rupN systemd-208/debian/systemd-journal-gatewayd.README.Debian systemd_new/debian/systemd-journal-gatewayd.README.Debian
+--- systemd-208/debian/systemd-journal-gatewayd.README.Debian	1970-01-01 00:00:00.000000000 +0000
++++ systemd_new/debian/systemd-journal-gatewayd.README.Debian	2014-08-11 14:17:49.978394353 +0000
+@@ -0,0 +1,7 @@
++systemd-journal-gatewayd
++========================
++
++Please make sure your firewall protects the port systemd-journal-gatewayd
++is running on (default: 19531), as right now systemd-journal-gatewayd
++doesn't implement any authentication mechanisms and allows connections
++from any host.
+diff -rupN systemd-208/debian/systemd-journal-gatewayd.install systemd_new/debian/systemd-journal-gatewayd.install
+--- systemd-208/debian/systemd-journal-gatewayd.install	1970-01-01 00:00:00.000000000 +0000
++++ systemd_new/debian/systemd-journal-gatewayd.install	2014-08-11 14:17:49.982394373 +0000
+@@ -0,0 +1,7 @@
++lib/systemd/system/systemd-journal-gatewayd.socket
++lib/systemd/system/systemd-journal-gatewayd.service
++lib/systemd/systemd-journal-gatewayd
++usr/share/man/man8/systemd-journal-gatewayd.service.8
++usr/share/man/man8/systemd-journal-gatewayd.socket.8
++usr/share/man/man8/systemd-journal-gatewayd.8
++usr/share/systemd/gatewayd/browse.html
+diff -rupN systemd-208/debian/systemd-journal-gatewayd.postinst systemd_new/debian/systemd-journal-gatewayd.postinst
+--- systemd-208/debian/systemd-journal-gatewayd.postinst	1970-01-01 00:00:00.000000000 +0000
++++ systemd_new/debian/systemd-journal-gatewayd.postinst	2014-08-11 14:17:49.982394373 +0000
+@@ -0,0 +1,12 @@
++#!/bin/sh
++
++set -e
++
++if ! getent passwd systemd-journal-gateway  >/dev/null; then
++    adduser --disabled-password  --quiet --system \
++        --home /run/systemd/gatewayd --no-create-home \
++        --gecos "Systemd Journal Gateway daemon" \
++        --group systemd-journal-gateway
++fi
++
++#DEBHELPER#
+diff -rupN systemd-208/debian/systemd-journal-gatewayd.postrm systemd_new/debian/systemd-journal-gatewayd.postrm
+--- systemd-208/debian/systemd-journal-gatewayd.postrm	1970-01-01 00:00:00.000000000 +0000
++++ systemd_new/debian/systemd-journal-gatewayd.postrm	2014-08-11 14:17:49.982394373 +0000
+@@ -0,0 +1,11 @@
++#!/bin/sh
++
++set -e
++
++if [ "$1" = "purge" ] ; then
++    if [ -x "$(command -v deluser)" ]; then
++        deluser --quiet --system systemd-journal-gateway > /dev/null || true
++    fi
++fi
++
++#DEBHELPER#
